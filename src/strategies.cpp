@@ -236,4 +236,3 @@ int getMaxOutdegree(vector<ForestOrientation> &orientations) {
     }
     return maxOutdeg;
 }
-

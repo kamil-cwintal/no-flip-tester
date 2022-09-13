@@ -12,9 +12,12 @@ using std::vector;
 using std::set;
 
 
-/* IntervalProblemInstance solving algorithm.
-   Returns SUCCESS iff strategy produces a valid solution. */
-void solveInstance(IntervalProblemInstance &ipi, int outdegBound, int &maxOutdegree);
+/* Efficient implementation of the IntervalProblemInstance
+   solving algorithm (Adaptive Minimize Collisions). During
+   the process, all interval statuses are set to either
+   FIRST_NODE_SELECTED or SECOND_NODE_SELECTED.
+   "maxOutdegree" denotes the largest outdegree that appeared. */
+void solveInstance(IntervalProblemInstance &ipi, int &maxOutdegree);
 
 /* Collects all intervals into a vector of interval trees. Each vertex
    has a separate tree with intervals for which it can be selected. */
@@ -39,15 +42,12 @@ auto ScoreComparator = [](const Interval *intA, const Interval *intB) {
           (intA->score == intB->score && (*intA) < (*intB));
 };
 
-using PreferredDict = set<Interval*, decltype(TimeBoundsComparator)>;
-
-/* Returns a dictionary with hints on which node should be selected
-   (the hints only apply if both nodes are viable choices). */
-PreferredDict calculatePreferredNodes(IntervalProblemInstance &ipi);
+/* The IntervalDict structure is introduced for efficient lookup. */
+using IntervalDict = set<Interval*, decltype(TimeBoundsComparator)>;
+IntervalDict constructIntervalDict(IntervalProblemInstance &ipi);
 
 /* Allows for interval lookup by time bounds. */
 Interval* findIntervalWithTimeBounds(int startTime, int endTime,
-                                     const PreferredDict &prefs);
+                                     const IntervalDict &dict);
 
 #endif
-

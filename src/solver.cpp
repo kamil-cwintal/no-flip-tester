@@ -8,16 +8,16 @@ using std::max;
 
 
 /* Efficient implementation of the IntervalProblemInstance
-   solving algorithm. During the process, all interval statuses
-   are set to either FIRST_NODE_SELECTED or SECOND_NODE_SELECTED.
-   "maxOutdegree" denotes the largest outdegree that appeared.
-   Returns SUCCESS iff strategy produces a valid solution. */
-void solveInstance(IntervalProblemInstance &ipi, int outdegBound, int &maxOutdegree) {
+   solving algorithm (Adaptive Minimize Collisions). During
+   the process, all interval statuses are set to either
+   FIRST_NODE_SELECTED or SECOND_NODE_SELECTED.
+   "maxOutdegree" denotes the largest outdegree that appeared. */
+void solveInstance(IntervalProblemInstance &ipi, int &maxOutdegree) {
     
     vector<IntervalTree> setIntervals = buildEmptyIntervalTrees(ipi);
     vector<IntervalTree> notsetIntervals = buildFullIntervalTrees(ipi);
     OutdegManager outdeg = buildOutdegManager(ipi);
-    PreferredDict prefs = calculatePreferredNodes(ipi);
+    IntervalDict dict = constructIntervalDict(ipi);
     
     // Initialize a priority queue of unprocessed intervals.
     set<Interval*, decltype(ScoreComparator)> queue(ScoreComparator);
@@ -55,14 +55,14 @@ void solveInstance(IntervalProblemInstance &ipi, int outdegBound, int &maxOutdeg
         
         setIntervals[assignedNode]
             .insert(current->startTime, current->endTime);
-        
+		
         /* Increment the score of unprocessed intervals that clash
            with the current interval. */
         auto clashesList = notsetIntervals[assignedNode]
             .getClashes(current->startTime, current->endTime);
         for (pair<int,int> &clash : clashesList) {
             Interval* tag = findIntervalWithTimeBounds(
-                clash.first, clash.second, prefs);
+                clash.first, clash.second, dict);
             queue.erase(tag); // old key is invalidated
             tag->score++;
             queue.insert(tag);
@@ -99,24 +99,22 @@ OutdegManager buildOutdegManager(const IntervalProblemInstance &ipi) {
     return manager;
 }
 
-/* Returns a dictionary with hints on which node should be selected
-   (the hints only apply if both nodes are viable choices). */
-PreferredDict calculatePreferredNodes(IntervalProblemInstance &ipi) {
-    PreferredDict prefs(TimeBoundsComparator);
+/* The IntervalDict structure is introduced for efficient lookup. */
+IntervalDict constructIntervalDict(IntervalProblemInstance &ipi) {
+    IntervalDict dict(TimeBoundsComparator);
     for (Interval &intv : ipi.intervals) {
-        prefs.emplace(&intv);
+        dict.emplace(&intv);
     }
-    return prefs;
+    return dict;
 }
 
 /* Allows for interval lookup by time bounds. */
 Interval* findIntervalWithTimeBounds(int startTime, int endTime,
-                                     const PreferredDict &prefs) {
-    /* We take advantage of the fact that PreferredDict uses
+                                     const IntervalDict &dict) {
+    /* We take advantage of the fact that IntervalDict uses
        a TimeBoundsComparator for ordering - we simply need
        to search for a mock interval with given time bounds. */
     Interval mock = {static_cast<unsigned int>(startTime),
                      static_cast<unsigned int>(endTime)};
-    return *prefs.find(&mock);
+    return *dict.find(&mock);
 }
-
